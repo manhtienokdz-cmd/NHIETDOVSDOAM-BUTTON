@@ -86,7 +86,7 @@
     <div id="status" class="status">Đèn: OFF</div>
   </div>
 
-  <!-- ERA Widget -->
+  <!-- ERA -->
   <script src="https://www.unpkg.com/@eohjsc/era-widget@1.1.3/src/index.js"></script>
 
   <script>
@@ -99,9 +99,9 @@
     let configHumi = null;
     let configLed = null;
     let actions = [];
-    let isOn = false;
+    let isOn = 0;
 
-    // 🌡️ Hiển thị nhiệt độ
+    // 🌡️ Nhiệt độ
     function updateTemp(temp) {
       tempEl.innerText = temp + "°C";
       tempEl.classList.remove("cold", "normal", "hot");
@@ -111,7 +111,7 @@
       else tempEl.classList.add("hot");
     }
 
-    // 💧 Hiển thị độ ẩm
+    // 💧 Độ ẩm
     function updateHumi(humi) {
       humiEl.innerText = humi + "%";
       humiEl.classList.remove("dry", "humid", "wet");
@@ -121,7 +121,7 @@
       else humiEl.classList.add("wet");
     }
 
-    // 💡 Hiển thị trạng thái LED
+    // 💡 LED
     function updateLed(status) {
       isOn = status;
 
@@ -145,10 +145,14 @@
       needRealtimeConfigs: true,
       needActions: true,
 
+      // 🔥 FIX: tìm theo tên, không phụ thuộc thứ tự
       onConfiguration: (config) => {
-        configTemp = config.realtime_configs[0];
-        configHumi = config.realtime_configs[1];
-        configLed  = config.realtime_configs[2];
+        config.realtime_configs.forEach(c => {
+          if (c.name === "temp") configTemp = c;
+          if (c.name === "humi") configHumi = c;
+          if (c.name === "led") configLed = c;
+        });
+
         actions = config.actions;
       },
 
@@ -165,14 +169,17 @@
       }
     });
 
-    // 🔘 Nút bật/tắt đèn
+    // 🔘 Nút điều khiển (fix luôn theo tên)
     btn.addEventListener("click", () => {
       if (!actions.length) return;
 
+      const actionOn = actions.find(a => a.name.toLowerCase().includes("bật"));
+      const actionOff = actions.find(a => a.name.toLowerCase().includes("tắt"));
+
       if (isOn == 1) {
-        eraWidget.triggerAction(actions[1]?.action, null); // Tắt
+        eraWidget.triggerAction(actionOff?.action, null);
       } else {
-        eraWidget.triggerAction(actions[0]?.action, null); // Bật
+        eraWidget.triggerAction(actionOn?.action, null);
       }
     });
 
