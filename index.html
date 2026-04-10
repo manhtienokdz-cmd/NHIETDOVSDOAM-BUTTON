@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IoT Nhiệt độ & Độ ẩm</title>
+
   <style>
     body {
       display: flex;
@@ -71,62 +72,110 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="box">
     <h2>Nhiệt độ</h2>
-    <div id="temp" class="value">30°C</div>
+    <div id="temp" class="value">--°C</div>
 
     <h2>Độ ẩm</h2>
-    <div id="humi" class="value">60%</div>
+    <div id="humi" class="value">--%</div>
 
-    <button id="btn" class="btn off" onclick="toggleLight()">TẮT</button>
+    <button id="btn" class="btn off">BẬT</button>
     <div id="status" class="status">Đèn: OFF</div>
   </div>
 
+  <!-- ERA Widget -->
+  <script src="https://www.unpkg.com/@eohjsc/era-widget@1.1.3/src/index.js"></script>
+
   <script>
-    let tempValue = 30;
-    let humiValue = 60;
+    const tempEl = document.getElementById("temp");
+    const humiEl = document.getElementById("humi");
+    const btn = document.getElementById("btn");
+    const statusEl = document.getElementById("status");
+
+    let configTemp = null;
+    let configHumi = null;
+    let configLed = null;
+    let actions = [];
     let isOn = false;
 
-    let tempEl = document.getElementById("temp");
-    let humiEl = document.getElementById("humi");
-    let btn = document.getElementById("btn");
-    let statusEl = document.getElementById("status");
-
+    // 🌡️ Hiển thị nhiệt độ
     function updateTemp(temp) {
       tempEl.innerText = temp + "°C";
       tempEl.classList.remove("cold", "normal", "hot");
+
       if (temp < 20) tempEl.classList.add("cold");
       else if (temp <= 30) tempEl.classList.add("normal");
       else tempEl.classList.add("hot");
     }
 
+    // 💧 Hiển thị độ ẩm
     function updateHumi(humi) {
       humiEl.innerText = humi + "%";
       humiEl.classList.remove("dry", "humid", "wet");
+
       if (humi < 40) humiEl.classList.add("dry");
       else if (humi <= 70) humiEl.classList.add("humid");
       else humiEl.classList.add("wet");
     }
 
-    function toggleLight() {
-      isOn = !isOn;
-      if (isOn) {
-        btn.innerText = "BẬT";
+    // 💡 Hiển thị trạng thái LED
+    function updateLed(status) {
+      isOn = status;
+
+      if (isOn == 1) {
+        btn.innerText = "TẮT";
         btn.classList.remove("off");
         btn.classList.add("on");
         statusEl.innerText = "Đèn: ON";
       } else {
-        btn.innerText = "TẮT";
+        btn.innerText = "BẬT";
         btn.classList.remove("on");
         btn.classList.add("off");
         statusEl.innerText = "Đèn: OFF";
       }
     }
 
-    updateTemp(tempValue);
-    updateHumi(humiValue);
+    // 🚀 ERA
+    const eraWidget = new EraWidget();
+
+    eraWidget.init({
+      needRealtimeConfigs: true,
+      needActions: true,
+
+      onConfiguration: (config) => {
+        configTemp = config.realtime_configs[0];
+        configHumi = config.realtime_configs[1];
+        configLed  = config.realtime_configs[2];
+        actions = config.actions;
+      },
+
+      onValues: (values) => {
+        if (!configTemp || !configHumi || !configLed) return;
+
+        const temp = values[configTemp.id]?.value;
+        const humi = values[configHumi.id]?.value;
+        const led  = values[configLed.id]?.value;
+
+        if (temp !== undefined) updateTemp(temp);
+        if (humi !== undefined) updateHumi(humi);
+        if (led !== undefined) updateLed(led);
+      }
+    });
+
+    // 🔘 Nút bật/tắt đèn
+    btn.addEventListener("click", () => {
+      if (!actions.length) return;
+
+      if (isOn == 1) {
+        eraWidget.triggerAction(actions[1]?.action, null); // Tắt
+      } else {
+        eraWidget.triggerAction(actions[0]?.action, null); // Bật
+      }
+    });
+
   </script>
 
 </body>
